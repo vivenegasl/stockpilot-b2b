@@ -1,0 +1,7 @@
+CREATE TABLE category (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);

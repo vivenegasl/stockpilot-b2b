@@ -1,0 +1,9 @@
+CREATE TABLE warehouse (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    code VARCHAR(20) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    address VARCHAR(500) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);

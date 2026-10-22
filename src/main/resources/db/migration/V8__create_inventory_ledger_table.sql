@@ -1,0 +1,13 @@
+CREATE TABLE inventory_ledger (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES product(id),
+    warehouse_id BIGINT NOT NULL REFERENCES warehouse(id),
+    order_id BIGINT REFERENCES purchase_order(id),
+    movement_type VARCHAR(30) NOT NULL CHECK (movement_type IN ('INBOUND', 'RESERVATION', 'RELEASE', 'FULFILLMENT', 'ADJUSTMENT')),
+    quantity_delta INTEGER NOT NULL,
+    resulting_total INTEGER NOT NULL CHECK (resulting_total >= 0),
+    resulting_reserved INTEGER NOT NULL CHECK (resulting_reserved >= 0),
+    reason VARCHAR(500) NOT NULL,
+    performed_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);

@@ -1,0 +1,12 @@
+CREATE TABLE purchase_order (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_number VARCHAR(35) NOT NULL UNIQUE,
+    idempotency_key UUID NOT NULL UNIQUE,
+    status VARCHAR(25) NOT NULL CHECK (status IN ('DRAFT', 'CONFIRMED', 'FULFILLED', 'CANCELLED')),
+    warehouse_id BIGINT NOT NULL REFERENCES warehouse(id),
+    total_net_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.00 CHECK (total_net_amount >= 0),
+    notes VARCHAR(500),
+    version INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);

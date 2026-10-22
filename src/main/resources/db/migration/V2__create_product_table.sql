@@ -1,0 +1,12 @@
+CREATE TABLE product (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sku VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    technical_spec VARCHAR(2000),
+    unit_price NUMERIC(12, 2) NOT NULL CHECK (unit_price > 0),
+    category_id BIGINT NOT NULL REFERENCES category(id),
+    active BOOLEAN NOT NULL DEFAULT true,
+    version INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);

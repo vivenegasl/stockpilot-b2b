@@ -1,0 +1,10 @@
+CREATE TABLE stock_reservation (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    stock_level_id BIGINT NOT NULL REFERENCES stock_level(id),
+    order_id BIGINT NOT NULL REFERENCES purchase_order(id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('ACTIVE', 'RELEASED', 'FULFILLED')),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);
