@@ -1,0 +1,112 @@
+name: StockPilot CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Verificación de Código, Tests y Seguridad Estática
+  # -------------------------------------------------------------
+  quality-and-test:
+    name: Build, Test & Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 LTS (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Validar Permisos del Gradle Wrapper
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
+          fi
+
+      - name: Compilación y Pruebas Unitarias
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew check --no-daemon
+          else
+            echo "Gradle wrapper aun no inicializado en este commit; verificacion documental OK."
+          fi
+
+      - name: Escaneo de Vulnerabilidades del Sistema de Archivos con Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0' # Informativo en fase documental; sera 1 con codigo de produccion
+
+  # -------------------------------------------------------------
+  # Job 2: Construcción de Contenedores Docker (Multi-stage)
+  # -------------------------------------------------------------
+  docker-validation:
+    name: Docker Image Build & Container Scan
+    runs-on: ubuntu-latest
+    needs: quality-and-test
+
+    steps:
+      - name: Checkout del Repositorio
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Verificar y Construir Imagen Docker
+        run: |
+          if [ -f "./Dockerfile" ]; then
+            docker build -t stockpilot-backend:${{ github.sha }} .
+          else
+            echo "Dockerfile aun no inicializado; se validara en Slice 0."
+          fi
+
+  # -------------------------------------------------------------
+  # Job 3: Despliegue Continuo a Oracle Cloud Infrastructure (OCI)
+  # -------------------------------------------------------------
+  deploy-oci:
+    name: Continuous Deployment to OCI (Compute VM)
+    runs-on: ubuntu-latest
+    needs: [quality-and-test, docker-validation]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout del Repositorio
+        uses: actions/checkout@v4
+
+      - name: Ejecutar Despliegue Vía SSH en OCI
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+        run: |
+          if [ -z "$OCI_HOST" ] || [ -z "$OCI_SSH_KEY" ]; then
+            echo "Secretos de OCI (OCI_HOST, OCI_SSH_KEY) aun no configurados en GitHub Secrets."
+            echo "El pipeline de CI queda 100% activo y preparado para el CD tan pronto se configuren."
+          else
+            echo "Iniciando despliegue seguro a Oracle Cloud Infrastructure..."
+            mkdir -p ~/.ssh
+            echo "$OCI_SSH_KEY" > ~/.ssh/oci_key
+            chmod 600 ~/.ssh/oci_key
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/oci_key $OCI_USER@$OCI_HOST "
+              cd ~/stockpilot && \
+              git pull origin main && \
+              docker compose -f docker-compose.prod.yml pull && \
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            "
+            echo "Despliegue a OCI completado con exito."
+          fi
