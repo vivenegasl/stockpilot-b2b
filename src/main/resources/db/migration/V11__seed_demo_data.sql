@@ -45,3 +45,10 @@ INSERT INTO inventory_ledger (product_id, warehouse_id, order_id, movement_type,
     (2, 3, NULL, 'INBOUND', 2, 2, 0, 'Stock de Seguridad Minera Antofagasta', 'SYSTEM_INITIAL_SEED'),
     (3, 3, NULL, 'INBOUND', 6, 6, 0, 'Stock de Seguridad Minera Antofagasta', 'SYSTEM_INITIAL_SEED'),
     (4, 3, NULL, 'INBOUND', 25, 25, 0, 'Stock de Seguridad Minera Antofagasta', 'SYSTEM_INITIAL_SEED');
+
+-- Sincronización de secuencias de identidad post-seed
+SELECT setval(pg_get_serial_sequence('category', 'id'), COALESCE(MAX(id), 1)) FROM category;
+SELECT setval(pg_get_serial_sequence('warehouse', 'id'), COALESCE(MAX(id), 1)) FROM warehouse;
+SELECT setval(pg_get_serial_sequence('product', 'id'), COALESCE(MAX(id), 1)) FROM product;
+SELECT setval(pg_get_serial_sequence('stock_level', 'id'), COALESCE(MAX(id), 1)) FROM stock_level;
+SELECT setval(pg_get_serial_sequence('inventory_ledger', 'id'), COALESCE(MAX(id), 1)) FROM inventory_ledger;
