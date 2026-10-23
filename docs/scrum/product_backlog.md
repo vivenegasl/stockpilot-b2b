@@ -12,15 +12,33 @@
 gantt
     title Plan de Sprints y Slices de Valor
     dateFormat  YYYY-MM-DD
-    section Sprint 1
-    Fundación, CI/CD y Catálogo B2B :2026-10-22, 5d
-    section Sprint 2
-    Inventario Multi-Bodega y Ledger :after a1, 5d
+    section Sprint 1 [COMPLETADO ✅]
+    Fundación, CI/CD y Catálogo B2B :done, 2026-10-22, 2d
+    section Sprint 2 [EN CURSO 🚀]
+    Inventario Multi-Bodega y Ledger :active, 2026-10-23, 5d
     section Sprint 3
-    Motor de Pedidos y Bloqueo Pesimista :after a2, 7d
+    Motor de Pedidos y Bloqueo Pesimista :2026-10-28, 7d
     section Sprint 4
-    Dashboard React 19 y OCI Deploy :after a3, 5d
+    Dashboard React 19 y OCI Deploy :2026-11-04, 5d
 ```
+
+---
+
+## 📋 Estado de Historias de Usuario
+
+| ID | User Story | SP | Sprint | Prioridad | Estado |
+|---|---|---|---|---|---|
+| **US-001** | Registro y Mantenimiento de SKUs Industriales | 3 | Sprint 1 | 🔴 Must Have | ✅ DONE |
+| **US-002** | Consulta Paginada del Catálogo con Filtrado | 2 | Sprint 1 | 🔴 Must Have | ✅ DONE |
+| **US-003** | Inicialización y Ajuste de Stock en Bodega Física | 3 | Sprint 2 | 🔴 Must Have | 🚀 IN PROGRESS |
+| **US-004** | Consulta de Disponibilidad de Inventario por Bodega | 2 | Sprint 2 | 🔴 Must Have | 🚀 IN PROGRESS |
+| **US-005** | Trazabilidad Completa mediante Ledger de Inventario | 3 | Sprint 2 | 🟡 Should Have | 🚀 IN PROGRESS |
+| **US-006** | Creación de Orden de Compra en Estado Borrador (DRAFT) | 5 | Sprint 3 | 🔴 Must Have | ⏳ TO DO |
+| **US-007** | Confirmación de Pedido con Reserva Atómica Pesimista | 8 | Sprint 3 | 🔴 Must Have | ⏳ TO DO |
+| **US-008** | Cancelación de Pedido y Liberación Determinista | 5 | Sprint 3 | 🔴 Must Have | ⏳ TO DO |
+| **US-009** | Despacho Físico de Pedido (Fulfillment) | 5 | Sprint 3 | 🟡 Should Have | ⏳ TO DO |
+| **US-010** | Dashboard de Operaciones en React 19 | 5 | Sprint 4 | 🔴 Must Have | ⏳ TO DO |
+| **US-011** | Métricas de Concurrencia en Prometheus | 3 | Sprint 4 | 🟢 Could Have | ⏳ TO DO |
 
 ---
 
