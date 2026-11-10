@@ -1,4 +1,4 @@
-# StockPilot — Documento de Arquitectura de Software (SAD)
+﻿# StockPilot — Documento de Arquitectura de Software (SAD)
 
 > **Estado**: Aprobado  
 > **Versión**: 1.0.0  
@@ -26,23 +26,23 @@ En este sector, clientes corporativos (empresas mineras, plantas de celulosa, in
 ```mermaid
 mindmap
   root((StockPilot))
-    En Alcance - MVP Core
+    Alcance MVP Core
       Catalogo B2B SKUs
       Inventario Multi-Bodega
-      Reserva Concurrente FOR UPDATE
-      Idempotency Engine 24h
-      Ledger Inmutable Append-Only
+      Reserva FOR UPDATE
+      Idempotencia 24h
+      Ledger Inmutable
       UI React 19 + Shadcn
     Siguiente Fase
-      Scheduler Expiracion TTL
-      Exportacion CSV Streaming
-      Transferencia Inter-Bodegas
+      Scheduler TTL
+      Exportacion CSV
+      Transferencias Bodega
       Auth JWT + RBAC
-    Fuera de Alcance Explicito
-      Microservicios Distribuidos
-      Pasarelas Pago B2C Transbank
-      Tracking Satelital GPS
-      Event Sourcing / Kafka
+    Fuera de Alcance
+      Microservicios
+      Pasarelas B2C
+      Tracking GPS
+      Event Sourcing
 ```
 
 ### 2.1 En Alcance (Slice 0 & MVP Core)
@@ -73,16 +73,19 @@ mindmap
 
 Toda operación del sistema debe garantizar bajo cualquier condición de estrés las siguientes leyes matemáticas:
 
-$$\forall (p, w) \in \text{StockLevel}: \quad 0 \le Q_{\text{reserved}} \le Q_{\text{total}}$$
+| Invariante | Expresión | Significado |
+|---|---|---|
+| **Rango de Reserva** | `0 <= reserved_qty <= total_qty` | Nunca se puede reservar más de lo físico |
+| **Disponibilidad no negativa** | `available_qty = total_qty - reserved_qty >= 0` | El stock libre jamás puede ser negativo |
+| **Consistencia del Ledger** | `delta_total = SUM(ledger INBOUND + FULFILLMENT + ADJUSTMENT)` | Todo cambio tiene entrada inmutable en ledger |
 
-$$Q_{\text{available}} = Q_{\text{total}} - Q_{\text{reserved}} \ge 0$$
+Donde las variables se corresponden de forma unívoca con las columnas del esquema relacional:
 
-$$\Delta Q_{\text{total}} = \sum \text{LedgerEntries}(\text{type} \in \{\text{INBOUND}, \text{FULFILLMENT}, \text{ADJUSTMENT}\})$$
-
-Donde las variables matemáticas se corresponden de forma unívoca con las columnas del esquema relacional:
-* $Q_{\text{total}}$: Columna `stock_level.total_qty` (existencias físicas reales en estantería).
-* $Q_{\text{reserved}}$: Columna `stock_level.reserved_qty` (unidades comprometidas en órdenes confirmadas).
-* $Q_{\text{available}}$: Columna `stock_level.available_qty` (stock libre disponible para nuevas reservas, calculada en BD).
+| Variable | Columna SQL | Significado |
+|---|---|---|
+| `total_qty` | `stock_level.total_qty` | Existencias físicas reales en estantería |
+| `reserved_qty` | `stock_level.reserved_qty` | Unidades comprometidas en órdenes confirmadas |
+| `available_qty` | `stock_level.available_qty` | Stock libre para nuevas reservas (columna generada en BD) |
 
 ---
 
@@ -92,50 +95,50 @@ Donde las variables matemáticas se corresponden de forma unívoca con las colum
 
 ```mermaid
 graph TB
-    subgraph Users ["Actores del Sistema"]
-        CLIENT["Comprador B2B / ERP Cliente<br/>[HTTPS / REST]"]
-        OPERATOR["Operador Logístico Bodega<br/>[Web Browser]"]
+    subgraph Users ["Actores"]
+        CLIENT["Comprador B2B / ERP<br/>HTTPS REST"]
+        OPERATOR["Operador Logístico<br/>Web Browser"]
     end
 
-    subgraph Boundary ["Límite del Sistema StockPilot (Host / OCI Compute)"]
-        NGINX["Nginx 1.25+ (Reverse Proxy & Edge)<br/>[C, Docker]<br/>Terminación TLS, Rate Limiting, Compresión Gzip, Seguridad OWASP"]
-        
-        SPA["Frontend SPA<br/>[React 19, TypeScript, Vite, Tailwind, Shadcn]<br/>UI reactiva, TanStack Query, gestión de pedidos e inventario"]
-        
-        subgraph Monolith ["Backend Spring Boot 3.4.x (Monolito Modular) [Java 21 LTS]"]
-            API_LAYER["API Gateway / Web Filter Layer<br/>IdempotencyFilter, Security Headers, ProblemDetail (RFC 7807)"]
-            
-            subgraph Modules ["Módulos de Dominio (Empaquetado Estricto)"]
-                MOD_CATALOG["📦 catalog<br/>SKUs, Categorías, Metadatos"]
-                MOD_INVENTORY["📊 inventory<br/>StockLevel, Lock Engine, Bodegas"]
-                MOD_ORDERING["🛒 ordering<br/>PurchaseOrder, OrderLine, State Machine"]
-                MOD_AUDIT["📋 audit<br/>InventoryLedger (Append-Only)"]
+    subgraph Boundary ["Sistema StockPilot — OCI Compute"]
+        NGINX["Nginx 1.25<br/>Reverse Proxy + TLS<br/>Rate Limiting + OWASP"]
+
+        SPA["Frontend SPA<br/>React 19 + TypeScript<br/>Vite + Tailwind + Shadcn"]
+
+        subgraph Monolith ["Backend — Spring Boot 3.4 · Java 21 LTS"]
+            API_LAYER["Web Filter Layer<br/>IdempotencyFilter · RFC 7807"]
+
+            subgraph Modules ["Módulos de Dominio"]
+                MOD_CATALOG["📦 catalog<br/>SKUs · Categorías"]
+                MOD_INVENTORY["📊 inventory<br/>StockLevel · Locks"]
+                MOD_ORDERING["🛒 ordering<br/>PurchaseOrder · FSM"]
+                MOD_AUDIT["📋 audit<br/>Ledger Append-Only"]
             end
         end
 
-        DB[("PostgreSQL 16 Engine<br/>[RDBMS]<br/>Generated Columns, Row-Level Locks, Constraints, Flyway")]
-        PROM["Prometheus Agent<br/>Scraping de métricas de Micrometer /actuator/prometheus"]
+        DB[("PostgreSQL 16<br/>Generated Cols<br/>Row-Level Locks<br/>Flyway")]
+        PROM["Prometheus Agent<br/>/actuator/prometheus"]
     end
 
-    CLIENT -->|"Llamadas API REST<br/>JSON / HTTPS"| NGINX
-    OPERATOR -->|"Interactúa con SPA<br/>HTTPS"| NGINX
-    NGINX -->|"Sirve estáticos SPA"| SPA
-    NGINX -->|"Proxy inverso /api/v1/*"| API_LAYER
+    CLIENT -->|"REST / HTTPS"| NGINX
+    OPERATOR -->|"HTTPS"| NGINX
+    NGINX -->|"Estáticos SPA"| SPA
+    NGINX -->|"Proxy /api/v1"| API_LAYER
     API_LAYER --> MOD_CATALOG
     API_LAYER --> MOD_ORDERING
     API_LAYER --> MOD_INVENTORY
     API_LAYER --> MOD_AUDIT
-    
-    MOD_ORDERING -->|"Invoca reserva atómica"| MOD_INVENTORY
+
+    MOD_ORDERING -->|"Reserva atómica"| MOD_INVENTORY
     MOD_ORDERING -->|"Registra eventos"| MOD_AUDIT
     MOD_INVENTORY -->|"Registra movimientos"| MOD_AUDIT
-    
-    MOD_CATALOG -->|"JDBC (HikariCP)"| DB
-    MOD_INVENTORY -->|"SELECT ... FOR UPDATE"| DB
-    MOD_ORDERING -->|"JDBC (HikariCP)"| DB
+
+    MOD_CATALOG -->|"HikariCP"| DB
+    MOD_INVENTORY -->|"FOR UPDATE"| DB
+    MOD_ORDERING -->|"HikariCP"| DB
     MOD_AUDIT -->|"INSERT Only"| DB
-    
-    PROM -->|"Scrape /actuator"| API_LAYER
+
+    PROM -->|"Scrape"| API_LAYER
 ```
 
 ### 4.2 Modelo Entidad-Relación (ERD) Físico
@@ -144,114 +147,114 @@ graph TB
 erDiagram
     CATEGORY ||--o{ PRODUCT : "clasifica"
     WAREHOUSE ||--o{ STOCK_LEVEL : "almacena"
-    PRODUCT ||--o{ STOCK_LEVEL : "tiene_stock_en"
+    PRODUCT ||--o{ STOCK_LEVEL : "tiene stock"
     STOCK_LEVEL ||--o{ STOCK_RESERVATION : "reserva"
     PURCHASE_ORDER ||--o{ ORDER_LINE : "contiene"
     PURCHASE_ORDER ||--o{ STOCK_RESERVATION : "garantiza"
-    WAREHOUSE ||--o{ PURCHASE_ORDER : "despacha_desde"
-    PRODUCT ||--o{ INVENTORY_LEDGER : "audita_sku"
-    WAREHOUSE ||--o{ INVENTORY_LEDGER : "audita_bodega"
-    PURCHASE_ORDER ||--o{ INVENTORY_LEDGER : "origina_movimiento"
+    WAREHOUSE ||--o{ PURCHASE_ORDER : "despacha"
+    PRODUCT ||--o{ INVENTORY_LEDGER : "audita sku"
+    WAREHOUSE ||--o{ INVENTORY_LEDGER : "audita bodega"
+    PURCHASE_ORDER ||--o{ INVENTORY_LEDGER : "origina mov"
 
     CATEGORY {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        varchar(100) name UK "NOT NULL, e.g. PLCs y Controladores"
-        varchar(500) description
-        timestamp created_at "NOT NULL DEFAULT clock_timestamp()"
-        timestamp updated_at "NOT NULL DEFAULT clock_timestamp()"
+        bigint id PK "IDENTITY"
+        varchar name UK "NOT NULL"
+        varchar description
+        timestamp created_at
+        timestamp updated_at
     }
 
     PRODUCT {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        varchar(50) sku UK "NOT NULL, e.g. PLC-SIEM-S71500"
-        varchar(200) name "NOT NULL"
-        varchar(2000) technical_spec "Especificación de ingeniería"
-        numeric(12_2) unit_price "NOT NULL, CHECK > 0"
-        bigint category_id FK "NOT NULL"
-        boolean active "NOT NULL DEFAULT true"
-        integer version "Optimistic Lock para catálogo"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
+        bigint id PK "IDENTITY"
+        varchar sku UK "NOT NULL eg PLC-SIEM-S71500"
+        varchar name "NOT NULL"
+        varchar technical_spec
+        numeric unit_price "CHECK gt 0"
+        bigint category_id FK
+        boolean active "DEFAULT true"
+        integer version "Optimistic Lock"
+        timestamp created_at
+        timestamp updated_at
     }
 
     WAREHOUSE {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        varchar(20) code UK "NOT NULL, e.g. WH-SCL-CENTRAL"
-        varchar(100) name "NOT NULL"
-        varchar(500) address "NOT NULL"
-        boolean active "NOT NULL DEFAULT true"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
+        bigint id PK "IDENTITY"
+        varchar code UK "eg WH-SCL-CENTRAL"
+        varchar name "NOT NULL"
+        varchar address
+        boolean active "DEFAULT true"
+        timestamp created_at
+        timestamp updated_at
     }
 
     STOCK_LEVEL {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        bigint product_id FK "NOT NULL"
-        bigint warehouse_id FK "NOT NULL"
-        integer total_qty "NOT NULL, CHECK >= 0"
-        integer reserved_qty "NOT NULL DEFAULT 0, CHECK >= 0"
-        integer available_qty "GENERATED ALWAYS AS (total_qty - reserved_qty) STORED"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
+        bigint id PK "IDENTITY"
+        bigint product_id FK
+        bigint warehouse_id FK
+        integer total_qty "CHECK gte 0"
+        integer reserved_qty "DEFAULT 0"
+        integer available_qty "GENERATED STORED"
+        timestamp created_at
+        timestamp updated_at
     }
 
     PURCHASE_ORDER {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        varchar(35) order_number UK "NOT NULL, e.g. ORD-20261022-0001"
-        uuid idempotency_key UK "NOT NULL"
-        varchar(25) status "DRAFT | CONFIRMED | FULFILLED | CANCELLED"
-        bigint warehouse_id FK "NOT NULL"
-        numeric(14_2) total_net_amount "NOT NULL DEFAULT 0"
-        varchar(500) notes
+        bigint id PK "IDENTITY"
+        varchar order_number UK "eg ORD-20261022-0001"
+        uuid idempotency_key UK
+        varchar status "DRAFT CONFIRMED FULFILLED CANCELLED"
+        bigint warehouse_id FK
+        numeric total_net_amount "DEFAULT 0"
+        varchar notes
         integer version "Optimistic Lock"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
+        timestamp created_at
+        timestamp updated_at
     }
 
     ORDER_LINE {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        bigint order_id FK "NOT NULL"
-        bigint product_id FK "NOT NULL"
-        integer quantity "NOT NULL, CHECK > 0"
-        numeric(12_2) unit_price "Precio snapshot"
-        numeric(14_2) line_total "GENERATED ALWAYS AS (quantity * unit_price) STORED"
-        timestamp created_at "NOT NULL"
+        bigint id PK "IDENTITY"
+        bigint order_id FK
+        bigint product_id FK
+        integer quantity "CHECK gt 0"
+        numeric unit_price "Snapshot precio"
+        numeric line_total "GENERATED STORED"
+        timestamp created_at
     }
 
     STOCK_RESERVATION {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        bigint stock_level_id FK "NOT NULL"
-        bigint order_id FK "NOT NULL"
-        integer quantity "NOT NULL, CHECK > 0"
-        varchar(20) status "ACTIVE | RELEASED | FULFILLED"
-        timestamp expires_at "Nullable"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
+        bigint id PK "IDENTITY"
+        bigint stock_level_id FK
+        bigint order_id FK
+        integer quantity "CHECK gt 0"
+        varchar status "ACTIVE RELEASED FULFILLED"
+        timestamp expires_at
+        timestamp created_at
+        timestamp updated_at
     }
 
     INVENTORY_LEDGER {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        bigint product_id FK "NOT NULL"
-        bigint warehouse_id FK "NOT NULL"
+        bigint id PK "IDENTITY"
+        bigint product_id FK
+        bigint warehouse_id FK
         bigint order_id FK "Nullable"
-        varchar(30) movement_type "INBOUND | RESERVATION | RELEASE | FULFILLMENT | ADJUSTMENT"
-        integer quantity_delta "NOT NULL"
-        integer resulting_total "Snapshot post-transacción"
-        integer resulting_reserved "Snapshot post-transacción"
-        varchar(500) reason "NOT NULL"
-        varchar(100) performed_by "NOT NULL"
-        timestamp created_at "NOT NULL DEFAULT clock_timestamp()"
+        varchar movement_type "INBOUND RESERVATION RELEASE FULFILLMENT"
+        integer quantity_delta
+        integer resulting_total "Snapshot post-tx"
+        integer resulting_reserved "Snapshot post-tx"
+        varchar reason
+        varchar performed_by
+        timestamp created_at "clock_timestamp"
     }
 
     IDEMPOTENCY_RECORD {
-        bigint id PK "GENERATED ALWAYS AS IDENTITY"
-        uuid idempotency_key UK "NOT NULL"
-        varchar(10) http_method "NOT NULL"
-        varchar(500) request_path "NOT NULL"
-        integer response_status "NOT NULL"
-        text response_body "NOT NULL"
-        timestamp created_at "NOT NULL DEFAULT clock_timestamp()"
-        timestamp expires_at "NOT NULL"
+        bigint id PK "IDENTITY"
+        uuid idempotency_key UK
+        varchar http_method
+        varchar request_path
+        integer response_status
+        text response_body
+        timestamp created_at
+        timestamp expires_at "TTL 24h"
     }
 ```
 
@@ -301,43 +304,43 @@ stateDiagram-v2
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Comprador_A as Comprador A (Minera Escondida)
-    actor Comprador_B as Comprador B (Codelco Norte)
-    participant API as Spring Boot (Filter & Controller)
-    participant Engine as ReservationEngine (Service)
-    participant DB as PostgreSQL 16 (HikariCP Pool)
+    actor A as Comprador A (Minera)
+    actor B as Comprador B (Codelco)
+    participant API as Spring Boot API
+    participant Engine as ReservationEngine
+    participant DB as PostgreSQL 16
 
-    Note over Comprador_A, Comprador_B: Situación: Queda 1 unidad de PLC-SIEM-S71500 en WH-SCL-CENTRAL.<br/>Ambos clientes lanzan confirmación en el mismo milisegundo.
+    Note over A,B: 1 unidad PLC-SIEM-S71500 en WH-SCL-CENTRAL.<br/>Ambos confirman en el mismo milisegundo.
 
-    Comprador_A->>+API: PUT /orders/101/confirm<br/>Idempotency-Key: uuid-alpha
-    Comprador_B->>+API: PUT /orders/202/confirm<br/>Idempotency-Key: uuid-beta
+    A->>+API: PUT /orders/101/confirm
+    B->>+API: PUT /orders/202/confirm
 
-    API->>+Engine: executeReservation(orderId: 101)
-    API->>+Engine: executeReservation(orderId: 202)
+    API->>+Engine: executeReservation(101)
+    API->>+Engine: executeReservation(202)
 
-    Note over Engine, DB: Ambas transacciones usan Isolation READ COMMITTED.<br/>Orden de locks: ORDER BY product_id ASC, warehouse_id ASC
+    Note over Engine,DB: READ COMMITTED.<br/>Lock order: product_id ASC, warehouse_id ASC
 
-    Engine->>+DB: [Tx 1] SELECT * FROM stock_level<br/>WHERE product_id=5 AND warehouse_id=1<br/>FOR UPDATE (lock timeout: 3000ms)
-    DB-->>Engine: [Tx 1] Fila bloqueada con éxito ✅ (available_qty = 1)
+    Engine->>+DB: Tx1: SELECT FOR UPDATE id=42<br/>timeout=3000ms
+    DB-->>Engine: Tx1: Lock OK — available_qty=1
 
-    Engine->>DB: [Tx 2] SELECT * FROM stock_level<br/>WHERE product_id=5 AND warehouse_id=1<br/>FOR UPDATE (lock timeout: 3000ms)
-    Note over Engine, DB: 🛑 [Tx 2] Pasa a estado WAITING en PostgreSQL.<br/>El hilo espera a que Tx 1 libere el bloqueo exclusivo.
+    Engine->>DB: Tx2: SELECT FOR UPDATE id=42<br/>timeout=3000ms
+    Note over Engine,DB: Tx2 entra en WAITING.<br/>Espera que Tx1 libere el lock.
 
-    Note over Engine, DB: Tx 1 valida: available_qty (1) >= requested (1) -> OK
-    Engine->>DB: [Tx 1] UPDATE stock_level SET reserved_qty = reserved_qty + 1 WHERE id=42
-    Engine->>DB: [Tx 1] INSERT INTO stock_reservation (...)
-    Engine->>DB: [Tx 1] INSERT INTO inventory_ledger (RESERVATION, delta=-1, ...)
-    Engine->>DB: [Tx 1] UPDATE purchase_order SET status = 'CONFIRMED'
-    Engine->>-DB: [Tx 1] COMMIT TRANSACTION ✅
+    Note over Engine,DB: Tx1: available(1) >= solicitado(1) OK
+    Engine->>DB: Tx1: UPDATE reserved_qty = 1
+    Engine->>DB: Tx1: INSERT stock_reservation
+    Engine->>DB: Tx1: INSERT inventory_ledger
+    Engine->>DB: Tx1: UPDATE order status=CONFIRMED
+    Engine->>-DB: Tx1: COMMIT
 
-    DB-->>Engine: [Tx 2] Despierta. Bloqueo adquirido ✅<br/>Lee estado fresco post-commit: available_qty = 0
+    DB-->>Engine: Tx2: Despierta — available_qty=0 (post-commit)
 
-    Note over Engine, DB: Tx 2 valida: available_qty (0) < requested (1) -> FALLO
-    Engine->>DB: [Tx 2] ROLLBACK TRANSACTION ❌
-    Engine-->>API: [Tx 2] Lanza InsufficientStockException
+    Note over Engine,DB: Tx2: available(0) < solicitado(1) — FALLO
+    Engine->>DB: Tx2: ROLLBACK
+    Engine-->>API: InsufficientStockException
 
-    API-->>Comprador_A: HTTP 200 OK<br/>{"orderId": 101, "status": "CONFIRMED"}
-    API-->>-Comprador_B: HTTP 409 Conflict (RFC 7807 ProblemDetail)<br/>{"type": "/problems/insufficient-stock",<br/> "title": "Stock Insuficiente",<br/> "status": 409,<br/> "detail": "SKU PLC-SIEM-S71500 en WH-SCL-CENTRAL: solicitado 1, disponible 0"}
+    API-->>A: 200 OK — orderId:101 CONFIRMED
+    API-->>-B: 409 Conflict RFC7807<br/>insufficient-stock: disponible=0, solicitado=1
 ```
 
 ---
