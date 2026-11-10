@@ -13,7 +13,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:80")
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .exposedHeaders("Idempotency-Key", "X-Cache-Lookup")
+                .exposedHeaders("Idempotency-Key", "X-Cache-Lookup", "X-Idempotent-Replay")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
