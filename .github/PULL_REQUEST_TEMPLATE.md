@@ -33,8 +33,9 @@ Antes de solicitar revisión o fusionar este Pull Request a `main`, el autor cer
 - [ ] El escaneo de seguridad en CI con **Trivy** no arroja vulnerabilidades `CRITICAL` ni `HIGH`.
 - [ ] No existen credenciales, llaves API ni secretos quemados en el código fuente.
 
-### 5. Documentación y DevOps
+### 5. Documentación, Soberanía Técnica y DevOps
 - [ ] Documentación OpenAPI / Swagger actualizada y verificada.
+- [ ] Documento maestro de estudio `docs/architecture/MASTER_STUDY_GUIDE.md` actualizado con el sistema de 3 capas y preguntas STAR.
 - [ ] El archivo `CHANGELOG.md` registra los cambios incorporados.
 - [ ] El contenedor Docker multi-stage compila y ejecuta con usuario no-root (`USER 1001`).
 - [ ] Pipeline de GitHub Actions ejecutado en verde.
