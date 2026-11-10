@@ -1,4 +1,4 @@
-﻿# StockPilot — Documento de Arquitectura de Software (SAD)
+# StockPilot — Documento de Arquitectura de Software (SAD)
 
 > **Estado**: Aprobado  
 > **Versión**: 1.0.0  
@@ -265,35 +265,38 @@ erDiagram
 stateDiagram-v2
     [*] --> DRAFT : POST /orders con Idempotency-Key
     
-    DRAFT --> CONFIRMED : PUT /orders/{id}/confirm<br/>[Bloqueo pesimista & reserva OK]
-    DRAFT --> CANCELLED : PUT /orders/{id}/cancel<br/>[Sin reservas activas]
+    DRAFT --> CONFIRMED : PUT /orders/{id}/confirm<br/>Lock pesimista y reserva OK
+    DRAFT --> CANCELLED : PUT /orders/{id}/cancel<br/>Sin reservas activas
     
-    CONFIRMED --> FULFILLED : PUT /orders/{id}/fulfill<br/>[Despacho de almacén]
-    CONFIRMED --> CANCELLED : PUT /orders/{id}/cancel<br/>[Libera reservas en stock_level]
+    CONFIRMED --> FULFILLED : PUT /orders/{id}/fulfill<br/>Despacho desde bodega
+    CONFIRMED --> CANCELLED : PUT /orders/{id}/cancel<br/>Libera reservas en stock
     
     FULFILLED --> [*]
     CANCELLED --> [*]
 
     note right of CONFIRMED
-        Invariante: stock_level.reserved_qty incrementado.
-        stock_reservation en ACTIVE.
-        Ledger registra 'RESERVATION'.
+        Invariantes:
+        - reserved_qty incrementado
+        - stock_reservation ACTIVE
+        - Ledger: RESERVATION
     end note
 
     note right of FULFILLED
-        Invariante: stock_level.total_qty y reserved_qty decrementados.
-        stock_reservation en FULFILLED.
-        Ledger registra 'FULFILLMENT'.
+        Invariantes:
+        - total_qty decrementado
+        - reserved_qty decrementado
+        - stock_reservation FULFILLED
+        - Ledger: FULFILLMENT
     end note
 ```
 
 #### Ciclo de Vida de la Reserva de Stock (`StockReservation`)
 ```mermaid
 stateDiagram-v2
-    [*] --> ACTIVE : Generada en Confirmación de Orden
+    [*] --> ACTIVE : Confirmacion Orden
     
     ACTIVE --> FULFILLED : Orden Despachada
-    ACTIVE --> RELEASED : Orden Cancelada o Expirada por TTL
+    ACTIVE --> RELEASED : Cancelada o TTL Expirado
     
     FULFILLED --> [*]
     RELEASED --> [*]
@@ -310,7 +313,7 @@ sequenceDiagram
     participant Engine as ReservationEngine
     participant DB as PostgreSQL 16
 
-    Note over A,B: 1 unidad PLC-SIEM-S71500 en WH-SCL-CENTRAL.<br/>Ambos confirman en el mismo milisegundo.
+    Note over A,B: Queda 1 unidad de SKU.<br/>Ambos confirman en t=0.
 
     A->>+API: PUT /orders/101/confirm
     B->>+API: PUT /orders/202/confirm
@@ -318,29 +321,29 @@ sequenceDiagram
     API->>+Engine: executeReservation(101)
     API->>+Engine: executeReservation(202)
 
-    Note over Engine,DB: READ COMMITTED.<br/>Lock order: product_id ASC, warehouse_id ASC
+    Note over Engine,DB: Isolation: READ COMMITTED.<br/>Orden: product_id, warehouse_id.
 
     Engine->>+DB: Tx1: SELECT FOR UPDATE id=42<br/>timeout=3000ms
-    DB-->>Engine: Tx1: Lock OK — available_qty=1
+    DB-->>Engine: Tx1: Lock OK (disp=1)
 
     Engine->>DB: Tx2: SELECT FOR UPDATE id=42<br/>timeout=3000ms
-    Note over Engine,DB: Tx2 entra en WAITING.<br/>Espera que Tx1 libere el lock.
+    Note over Engine,DB: Tx2 en WAITING.<br/>Espera liberar lock Tx1.
 
-    Note over Engine,DB: Tx1: available(1) >= solicitado(1) OK
+    Note over Engine,DB: Tx1: disp(1) >= pedido(1) OK
     Engine->>DB: Tx1: UPDATE reserved_qty = 1
     Engine->>DB: Tx1: INSERT stock_reservation
     Engine->>DB: Tx1: INSERT inventory_ledger
     Engine->>DB: Tx1: UPDATE order status=CONFIRMED
     Engine->>-DB: Tx1: COMMIT
 
-    DB-->>Engine: Tx2: Despierta — available_qty=0 (post-commit)
+    DB-->>Engine: Tx2: Despierta (disp=0)
 
-    Note over Engine,DB: Tx2: available(0) < solicitado(1) — FALLO
+    Note over Engine,DB: Tx2: disp(0) < pedido(1) FALLA
     Engine->>DB: Tx2: ROLLBACK
     Engine-->>API: InsufficientStockException
 
-    API-->>A: 200 OK — orderId:101 CONFIRMED
-    API-->>-B: 409 Conflict RFC7807<br/>insufficient-stock: disponible=0, solicitado=1
+    API-->>A: 200 OK (101 CONFIRMED)
+    API-->>-B: 409 Conflict (RFC 7807)<br/>Stock insuficiente (disp=0)
 ```
 
 ---
