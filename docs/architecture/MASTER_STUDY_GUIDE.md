@@ -302,7 +302,9 @@ Un Deadlock ocurre cuando dos transacciones intentan bloquear múltiples recurso
 * Transacción 2: Bloquea el SKU B y luego intenta bloquear el SKU A.
 * **Resultado**: Ambas transacciones se quedan esperando mutuamente por siempre hasta que PostgreSQL detecta el ciclo y mata una de ellas forzosamente (`DeadlockException`).
 * **Prevención en StockPilot**: **Ordenamiento determinista**. En Slice 3, cuando una orden reserve múltiples SKUs, la consulta siempre ordenará los bloqueos lexicográficamente:
-  $$\text{ORDER BY product\_id ASC, warehouse\_id ASC}$$
+  ```sql
+  ORDER BY product_id ASC, warehouse_id ASC
+  ```
   Al respetarse siempre este orden, es matemáticamente imposible que dos transacciones generen un ciclo cerrado de espera (se rompe la condición de espera circular de Coffman).
 
 ---
@@ -353,7 +355,9 @@ Estructuradas bajo la metodología **STAR** (*Situación, Tarea, Acción, Result
 * **S (Situación)**: Una orden de compra B2B generalmente incluye múltiples líneas de productos (ej. un PLC y tres sensores). Si dos órdenes concurrentes incluyen los mismos productos pero en orden inverso, las transacciones pueden bloquearse mutuamente.
 * **T (Tarea)**: Erradicar la posibilidad matemática de Deadlocks sin depender de reintentos ciegos a nivel de aplicación.
 * **A (Acción)**: Apliqué la ruptura de la condición de Coffman mediante **ordenamiento determinista estricto**. Antes de solicitar los bloqueos `FOR UPDATE` en la base de datos, el servicio ordena la lista de líneas por su identificador único:
-  $$\text{ORDER BY product\_id ASC, warehouse\_id ASC}$$
+  ```sql
+  ORDER BY product_id ASC, warehouse_id ASC
+  ```
   Así, ninguna transacción intentará adquirir el Lock(B) antes que el Lock(A).
 * **R (Resultado)**: Eliminación total de interbloqueos circulares en la capa de persistencia, reduciendo la tasa de excepciones `CannotAcquireLockException` a cero en escenarios concurrentes.
 

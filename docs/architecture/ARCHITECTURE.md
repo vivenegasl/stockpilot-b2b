@@ -73,11 +73,16 @@ mindmap
 
 Toda operación del sistema debe garantizar bajo cualquier condición de estrés las siguientes leyes matemáticas:
 
-$$\forall (p, w) \in \text{StockLevel}: \quad \text{reserved\_qty} \ge 0 \quad \land \quad \text{reserved\_qty} \le \text{total\_qty}$$
+$$\forall (p, w) \in \text{StockLevel}: \quad 0 \le Q_{\text{reserved}} \le Q_{\text{total}}$$
 
-$$\text{available\_qty} = \text{total\_qty} - \text{reserved\_qty} \ge 0$$
+$$Q_{\text{available}} = Q_{\text{total}} - Q_{\text{reserved}} \ge 0$$
 
-$$\Delta \text{total\_qty} = \sum \text{LedgerEntries(movement\_type} \in \{\text{INBOUND}, \text{FULFILLMENT}, \text{ADJUSTMENT}\})$$
+$$\Delta Q_{\text{total}} = \sum \text{LedgerEntries}(\text{type} \in \{\text{INBOUND}, \text{FULFILLMENT}, \text{ADJUSTMENT}\})$$
+
+Donde las variables matemáticas se corresponden de forma unívoca con las columnas del esquema relacional:
+* $Q_{\text{total}}$: Columna `stock_level.total_qty` (existencias físicas reales en estantería).
+* $Q_{\text{reserved}}$: Columna `stock_level.reserved_qty` (unidades comprometidas en órdenes confirmadas).
+* $Q_{\text{available}}$: Columna `stock_level.available_qty` (stock libre disponible para nuevas reservas, calculada en BD).
 
 ---
 
@@ -355,10 +360,10 @@ Para preservar la pureza modular y asegurar que el código no degrade en un "big
 
 1. **Aislamiento de Módulos**: `com.stockpilot.catalog`, `com.stockpilot.inventory`, `com.stockpilot.ordering`, `com.stockpilot.audit`, `com.stockpilot.shared`.
 2. **Dirección de Dependencias**:
-   - `ordering` $\rightarrow$ `inventory`
-   - `inventory` $\rightarrow$ `audit`
-   - `ordering` $\rightarrow$ `audit`
-   - **Prohibido**: `audit` $\rightarrow$ cualquier otro módulo.
+   - `ordering` → `inventory`
+   - `inventory` → `audit`
+   - `ordering` → `audit`
+   - **Prohibido**: `audit` → cualquier otro módulo.
    - **Prohibido**: Referencias circulares inter-módulo.
 3. **Mapeo Estricto DTO vs Entity**:
    - **Jamás** exponer clases `@Entity` en controladores REST.
