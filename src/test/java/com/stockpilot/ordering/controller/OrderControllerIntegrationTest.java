@@ -151,4 +151,22 @@ class OrderControllerIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type", is("https://api.stockpilot.local/problems/resource-not-found")));
     }
+
+    @Test
+    @DisplayName("GET /api/v1/orders returns paged orders with 200 OK")
+    void getOrders_ReturnsPagedOrders() throws Exception {
+        OrderResponse response = new OrderResponse(
+                101L, "ORD-20261024-TEST", UUID.randomUUID(), OrderStatus.DRAFT,
+                1L, "WH-SCL-01", "Santiago Central", BigDecimal.valueOf(2500000),
+                "Nota", 0, List.of(), Instant.now(), Instant.now()
+        );
+        org.springframework.data.domain.Page<OrderResponse> page = new org.springframework.data.domain.PageImpl<>(List.of(response));
+
+        when(orderService.getOrders(eq(OrderStatus.DRAFT), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/orders?status=DRAFT&page=0&size=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].orderNumber", is("ORD-20261024-TEST")))
+                .andExpect(jsonPath("$.content[0].status", is("DRAFT")));
+    }
 }

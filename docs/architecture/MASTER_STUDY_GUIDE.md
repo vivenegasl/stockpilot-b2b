@@ -1,6 +1,6 @@
 # StockPilot — Guía Maestra de Estudio de Arquitectura e Ingeniería (Master Study Guide)
 
-> **Documento Vivo de Soberanía Técnica — Slices 1, 2 y 3**  
+> **Documento Vivo de Soberanía Técnica — Slices 1, 2, 3 y 4**  
 > **Autor**: Víctor Venegas — Lead Full-Stack Engineer & Software Architect  
 > **Propósito**: Dominio absoluto de cada decisión de diseño, línea de código, anotación de framework y comando SQL del sistema. Sin jerga circular, con rigor de ingeniería de sistemas de misión crítica.
 
@@ -23,6 +23,7 @@ Para facilitar el estudio enfocado y evitar la sobrecarga de un único documento
 | **8. Hoja de Ruta de Estudio (Syllabus)** | [📄 08-hoja-de-ruta-syllabus-estudio.md](study-guide/08-hoja-de-ruta-syllabus-estudio.md) | Syllabus de 8 semanas (4 niveles de madurez); protocolo de la Ventana Dorada de 90 minutos diarios (07:00 a 08:30 AM): 4 bloques de 20 min (Lectura, Diagramado a mano, Inspección de código, Feynman en voz alta) + 10 min de síntesis en Obsidian PKM. |
 | **9. El Simulador de Entrevista Técnica (STAR)** | [📄 09-simulador-entrevistas-star.md](study-guide/09-simulador-entrevistas-star.md) | Top 8 preguntas de fuego para entrevistas de Senior Software Engineer y Solutions Architect estructuradas en Situación, Tarea, Acción y Resultado (Bloqueo pesimista, Deadlocks, Ledger inmutable, `@Immutable`, `@WebMvcTest`, Idempotencia en vuelo, `FilterRegistrationBean`, Testing de concurrencia y CAS). |
 | **10. Protocolo de Gobierno Vivo y DoD** | [📄 10-protocolo-gobierno-vivo-dod.md](study-guide/10-protocolo-gobierno-vivo-dod.md) | Enmienda oficial a la Definition of Done: actualización obligatoria de la guía para cada Slice futuro y protocolo para incorporar nuevos módulos sin alterar archivos gigantes. |
+| **11. Slice 4: Frontend React 19, Observabilidad y Métricas** | [📄 11-slice-4-frontend-observabilidad.md](study-guide/11-slice-4-frontend-observabilidad.md) | Frontend SPA en React 19 + TypeScript + Tailwind v4; preflight CORS y `Access-Control-Expose-Headers`; cliente HTTP con auto UUID v4; telemetría Actuator + Micrometer + Prometheus; saturación de pools HikariCP y memoria JVM Heap; gráficos Recharts. |
 
 ---
 

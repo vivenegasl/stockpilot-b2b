@@ -1,7 +1,10 @@
 package com.stockpilot.ordering.service;
 
+import com.stockpilot.ordering.domain.OrderStatus;
 import com.stockpilot.ordering.dto.CreateOrderRequest;
 import com.stockpilot.ordering.dto.OrderResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
@@ -18,4 +21,6 @@ public interface OrderService {
     OrderResponse getOrderById(Long id);
 
     OrderResponse getOrderByNumber(String orderNumber);
+
+    Page<OrderResponse> getOrders(OrderStatus status, Pageable pageable);
 }

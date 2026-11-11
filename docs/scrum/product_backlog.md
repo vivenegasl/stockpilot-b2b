@@ -18,8 +18,10 @@ gantt
     Inventario Multi-Bodega y Ledger :done, 2026-10-23, 5d
     section Sprint 3 [COMPLETADO ✅]
     Motor de Pedidos y Bloqueo Pesimista :done, 2026-10-28, 7d
-    section Sprint 4
-    Dashboard React 19 y OCI Deploy :2026-11-04, 5d
+    section Sprint 4 [COMPLETADO ✅]
+    Dashboard React 19 y Observabilidad Prometheus :done, 2026-11-04, 5d
+    section Sprint 5
+    Cloud Deploy OCI & Helm/K8s :2026-11-12, 5d
 ```
 
 ---
@@ -37,12 +39,8 @@ gantt
 | **US-007** | Confirmación de Pedido con Reserva Atómica Pesimista | 8 | Sprint 3 | 🔴 Must Have | ✅ DONE |
 | **US-008** | Cancelación de Pedido y Liberación Determinista | 5 | Sprint 3 | 🔴 Must Have | ✅ DONE |
 | **US-009** | Despacho Físico de Pedido (Fulfillment) | 5 | Sprint 3 | 🟡 Should Have | ✅ DONE |
-| **US-010** | Dashboard de Operaciones en React 19 | 5 | Sprint 4 | 🔴 Must Have | ⏳ TO DO |
-| **US-007** | Confirmación de Pedido con Reserva Atómica Pesimista | 8 | Sprint 3 | 🔴 Must Have | ⏳ TO DO |
-| **US-008** | Cancelación de Pedido y Liberación Determinista | 5 | Sprint 3 | 🔴 Must Have | ⏳ TO DO |
-| **US-009** | Despacho Físico de Pedido (Fulfillment) | 5 | Sprint 3 | 🟡 Should Have | ⏳ TO DO |
-| **US-010** | Dashboard de Operaciones en React 19 | 5 | Sprint 4 | 🔴 Must Have | ⏳ TO DO |
-| **US-011** | Métricas de Concurrencia en Prometheus | 3 | Sprint 4 | 🟢 Could Have | ⏳ TO DO |
+| **US-010** | Dashboard de Operaciones en React 19 | 5 | Sprint 4 | 🔴 Must Have | ✅ DONE |
+| **US-011** | Métricas de Concurrencia en Prometheus | 3 | Sprint 4 | 🟢 Could Have | ✅ DONE |
 
 ---
 

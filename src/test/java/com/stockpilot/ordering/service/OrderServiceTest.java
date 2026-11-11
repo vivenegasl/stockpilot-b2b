@@ -13,6 +13,7 @@ import com.stockpilot.ordering.dto.OrderItemRequest;
 import com.stockpilot.ordering.dto.OrderResponse;
 import com.stockpilot.ordering.exception.InvalidOrderStateException;
 import com.stockpilot.ordering.exception.OrderNotFoundException;
+import com.stockpilot.ordering.metrics.OrderMetrics;
 import com.stockpilot.ordering.repository.PurchaseOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +49,9 @@ class OrderServiceTest {
 
     @Mock
     private ReservationService reservationService;
+
+    @Mock
+    private OrderMetrics orderMetrics;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -175,5 +179,23 @@ class OrderServiceTest {
 
         assertThat(response.status()).isEqualTo(OrderStatus.FULFILLED);
         verify(reservationService).fulfillStock(eq(101L), eq("ORD-001"));
+    }
+
+    @Test
+    @DisplayName("getOrders returns paged orders mapped to OrderResponse")
+    void getOrders_Success() {
+        PurchaseOrder order = new PurchaseOrder("ORD-001", idempotencyKey, warehouse, "Notas");
+        order.setId(101L);
+        order.addLine(product, 2, product.getUnitPrice());
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        org.springframework.data.domain.Page<PurchaseOrder> page = new org.springframework.data.domain.PageImpl<>(List.of(order));
+
+        when(purchaseOrderRepository.findAllByStatusPaged(OrderStatus.DRAFT, pageable)).thenReturn(page);
+
+        org.springframework.data.domain.Page<OrderResponse> result = orderService.getOrders(OrderStatus.DRAFT, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).orderNumber()).isEqualTo("ORD-001");
     }
 }

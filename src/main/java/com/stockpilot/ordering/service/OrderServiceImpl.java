@@ -15,9 +15,12 @@ import com.stockpilot.ordering.dto.OrderItemRequest;
 import com.stockpilot.ordering.dto.OrderLineResponse;
 import com.stockpilot.ordering.dto.OrderResponse;
 import com.stockpilot.ordering.exception.OrderNotFoundException;
+import com.stockpilot.ordering.metrics.OrderMetrics;
 import com.stockpilot.ordering.repository.PurchaseOrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,17 +43,20 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
     private final ReservationService reservationService;
+    private final OrderMetrics orderMetrics;
 
     public OrderServiceImpl(
             PurchaseOrderRepository purchaseOrderRepository,
             ProductRepository productRepository,
             WarehouseRepository warehouseRepository,
-            ReservationService reservationService
+            ReservationService reservationService,
+            OrderMetrics orderMetrics
     ) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.productRepository = productRepository;
         this.warehouseRepository = warehouseRepository;
         this.reservationService = reservationService;
+        this.orderMetrics = orderMetrics;
     }
 
     @Override
@@ -87,6 +93,7 @@ public class OrderServiceImpl implements OrderService {
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
         log.info("Created DRAFT Order '{}' (ID: {}) with {} lines, total={}",
                 savedOrder.getOrderNumber(), savedOrder.getId(), savedOrder.getLines().size(), savedOrder.getTotalNetAmount());
+        orderMetrics.incrementOrdersCreated();
 
         return mapToResponse(savedOrder);
     }
@@ -116,6 +123,7 @@ public class OrderServiceImpl implements OrderService {
 
         PurchaseOrder confirmedOrder = purchaseOrderRepository.save(order);
         log.info("Order '{}' successfully CONFIRMED and stock reserved.", confirmedOrder.getOrderNumber());
+        orderMetrics.incrementOrdersConfirmed();
 
         return mapToResponse(confirmedOrder);
     }
@@ -134,6 +142,7 @@ public class OrderServiceImpl implements OrderService {
         order.cancel();
         PurchaseOrder cancelledOrder = purchaseOrderRepository.save(order);
         log.info("Order '{}' successfully CANCELLED and any active reservations released.", cancelledOrder.getOrderNumber());
+        orderMetrics.incrementOrdersCancelled();
 
         return mapToResponse(cancelledOrder);
     }
@@ -150,6 +159,7 @@ public class OrderServiceImpl implements OrderService {
         order.fulfill();
         PurchaseOrder fulfilledOrder = purchaseOrderRepository.save(order);
         log.info("Order '{}' successfully FULFILLED and physical stock deducted.", fulfilledOrder.getOrderNumber());
+        orderMetrics.incrementOrdersFulfilled();
 
         return mapToResponse(fulfilledOrder);
     }
@@ -168,6 +178,13 @@ public class OrderServiceImpl implements OrderService {
         PurchaseOrder order = purchaseOrderRepository.findByOrderNumberWithDetails(orderNumber)
                 .orElseThrow(() -> new OrderNotFoundException(orderNumber));
         return mapToResponse(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrders(OrderStatus status, Pageable pageable) {
+        return purchaseOrderRepository.findAllByStatusPaged(status, pageable)
+                .map(this::mapToResponse);
     }
 
     private String generateOrderNumber() {

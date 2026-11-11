@@ -1,6 +1,9 @@
 package com.stockpilot.ordering.repository;
 
+import com.stockpilot.ordering.domain.OrderStatus;
 import com.stockpilot.ordering.domain.PurchaseOrder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,4 +32,8 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
             "LEFT JOIN FETCH l.product p " +
             "WHERE po.orderNumber = :orderNumber")
     Optional<PurchaseOrder> findByOrderNumberWithDetails(@Param("orderNumber") String orderNumber);
+
+    @Query(value = "SELECT po FROM PurchaseOrder po JOIN FETCH po.warehouse w WHERE (:status IS NULL OR po.status = :status)",
+           countQuery = "SELECT COUNT(po) FROM PurchaseOrder po WHERE (:status IS NULL OR po.status = :status)")
+    Page<PurchaseOrder> findAllByStatusPaged(@Param("status") OrderStatus status, Pageable pageable);
 }

@@ -1,5 +1,6 @@
 package com.stockpilot.ordering.controller;
 
+import com.stockpilot.ordering.domain.OrderStatus;
 import com.stockpilot.ordering.dto.CreateOrderRequest;
 import com.stockpilot.ordering.dto.OrderResponse;
 import com.stockpilot.ordering.service.OrderService;
@@ -9,6 +10,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -95,5 +101,18 @@ public class OrderController {
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id) {
         OrderResponse response = orderService.getOrderById(id);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    @Operation(summary = "List purchase orders with pagination and status filter", description = "Returns a paged list of purchase orders, optionally filtered by status.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Orders page retrieved successfully")
+    })
+    public ResponseEntity<Page<OrderResponse>> getOrders(
+            @Parameter(description = "Optional status filter (DRAFT, CONFIRMED, CANCELLED, FULFILLED)")
+            @RequestParam(required = false) OrderStatus status,
+            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(orderService.getOrders(status, pageable));
     }
 }
