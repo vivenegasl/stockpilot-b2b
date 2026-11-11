@@ -357,6 +357,11 @@ sequenceDiagram
 | **ADR-003** | Motor de Idempotencia en Capa HTTP | Servlet Filter + Persistencia en PostgreSQL (TTL 24h) | Almacenamiento extra en BD a cambio de protección total ante reintentos de red |
 | **ADR-004** | Cálculo de `available_qty` en Base de Datos | Columna Calculada `GENERATED ALWAYS AS STORED` | Rigidez en esquema DDL a cambio de erradicar desincronizaciones en la capa de aplicación |
 | **ADR-005** | Estrategia de Despliegue en Oracle Cloud (OCI) | Compute VM + Docker Multi-stage + Nginx Edge Proxy | Gestión de infraestructura IaaS a cambio de costo \$0 (Free Tier) y soberanía de datos |
+| **ADR-006** | Libro Mayor Inmutable e Inmutabilidad ORM | `inventory_ledger` append-only con `@Immutable` | Desactiva dirty checking y prohíbe updates para cumplimiento SOX / ISO 27001 |
+| **ADR-007** | Ciclo de Órdenes y Prevención de Deadlocks | Ordenamiento determinista `productId ASC` | Ruptura de la condición de espera circular de Coffman en transacciones concurrentes |
+| **ADR-008** | Arquitectura Frontend SPA en React 19 | React 19 + TypeScript + Vite + Tailwind v4 Dark Luxury | Cero costo de cómputo en edge, bundle liviano (<730 kB) y cliente con auto-inyección de UUID v4 |
+| **ADR-009** | Observabilidad y Telemetría con Prometheus | Contadores dimensionales Micrometer + `/actuator/prometheus` | Métricas abiertas sin sobrecarga transaccional para auditar pools HikariCP y sobreventa 409 |
+| **ADR-010** | Seguridad Perimetral CORS y Cabeceras Notariales | `CorsFilter` con máxima prioridad y exposición de `X-Idempotent-Replay` | Permite a la SPA inspeccionar replays sin violar la Same-Origin Policy del navegador |
 
 ---
 
@@ -374,3 +379,44 @@ Para preservar la pureza modular y asegurar que el código no degrade en un "big
 3. **Mapeo Estricto DTO vs Entity**:
    - **Jamás** exponer clases `@Entity` en controladores REST.
    - Todo request/response es un `java.lang.Record` inmutable con anotaciones `jakarta.validation.constraints`.
+
+---
+
+## 7. Arquitectura de Observabilidad y Telemetría Transaccional (Micrometer & Prometheus)
+
+En consonancia con los 4 Golden Signals de Google SRE (Latencia, Tráfico, Errores y Saturación), StockPilot implementa una capa de observabilidad dimensional no invasiva mediante **Micrometer** expuesta bajo el estándar OpenMetrics en `/actuator/prometheus`:
+
+```mermaid
+graph LR
+    subgraph "Monitoreo de Negocio & Concurrencia"
+        M1["stockpilot.orders.created (Counter)"]
+        M2["stockpilot.orders.confirmed (Counter)"]
+        M3["stockpilot.reservations.insufficient_stock (Counter 409)"]
+        M4["stockpilot.idempotency.replays (Counter Cache HIT)"]
+    end
+
+    subgraph "Monitoreo de Infraestructura"
+        H1["hikaricp.connections.active (Gauge)"]
+        H2["hikaricp.connections.total (Gauge)"]
+        J1["jvm.memory.used [heap] (Gauge)"]
+    end
+
+    M1 & M2 & M3 & M4 --> REG["MeterRegistry (Spring Boot)"]
+    H1 & H2 & J1 --> REG
+    REG --> SCRAPE["GET /actuator/prometheus"]
+    SCRAPE --> FE["Dashboard React 19 (Recharts)"]
+    SCRAPE --> PROM["Prometheus / Grafana Server"]
+```
+
+---
+
+## 8. Arquitectura del Frontend SPA y Control de Idempotencia en Cliente
+
+Para la consola operativa de bodegas y checkout corporativo, se despliega una Single Page Application (SPA) desacoplada en React 19 con estética Dark Luxury:
+
+1. **Inyección Notarial de Idempotencia (`client.ts`)**:
+   Toda petición mutativa (`POST`, `PUT`, `PATCH`) inyecta automáticamente un identificador único irrepetible `Idempotency-Key: crypto.randomUUID()` si no fue proporcionado manualmente. Esto previene que un operador genere órdenes duplicadas por dobles clics accidentales.
+2. **Trazabilidad de Replays en UI**:
+   El cliente web inspecciona la cabecera expuesta `X-Idempotent-Replay: true` y notifica visualmente al operador mediante un badge dorado distintivo de replay, garantizando transparencia sobre cuándo los datos provienen de una ejecución en vivo y cuándo de la caché de idempotencia.
+3. **Bundling y Cero Costo de Cómputo**:
+   El código compila mediante Vite a archivos estáticos inmutables en `dist/`, permitiendo su distribución vía Nginx o CDN con huella de memoria nula en el servidor de aplicaciones.

@@ -77,4 +77,22 @@
 
 ---
 
+### ❓ Pregunta 9: *"¿Por qué configuraste CORS con `Access-Control-Expose-Headers` para `Idempotency-Key` y `X-Idempotent-Replay`, y qué sucedería en el navegador si omites esa directiva en una SPA desacoplada?"*
+
+* **S (Situación)**: En StockPilot, la consola de operaciones es una SPA independiente en React 19 (`http://localhost:5173` o CDN corporativo) que se comunica con una API REST en Spring Boot (`http://localhost:8080`). Al enviar una confirmación de orden, el cliente necesita saber si la respuesta provino de una ejecución fresca en base de datos o de un replay de la caché de idempotencia para renderizar un distintivo visual de auditoría.
+* **T (Tarea)**: Permitir la comunicación segura entre diferentes orígenes respetando la Política del Mismo Origen (*Same-Origin Policy - SOP*) y asegurar que el código JavaScript pueda inspeccionar las cabeceras personalizadas de control transaccional generadas por el backend.
+* **A (Acción)**: Implementé `CorsConfig.java` registrando un `CorsFilter` con máxima precedencia (`Ordered.HIGHEST_PRECEDENCE`) antes de la cadena de seguridad y filtros de servlet. Autorizé los orígenes y métodos requeridos, pero crucialmente añadí `configuration.setExposedHeaders(List.of("Idempotency-Key", "X-Idempotent-Replay", "Location"))`. Además, asigné un `maxAge` de 3600 segundos para que el navegador cachee la autorización pre-flight `HTTP OPTIONS` y no sature la red con vuelos preliminares en cada petición recurrente.
+* **R (Resultado)**: La comunicación entre dominios opera sin fricción y de forma segura. Si hubiese omitido `Access-Control-Expose-Headers`, el navegador por estándar W3C CORS habría filtrado las cabeceras personalizadas por seguridad, haciendo que `response.headers.get('X-Idempotent-Replay')` retornara siempre `null` en JavaScript. Gracias a esta directiva, el frontend puede verificar con certeza matemática si ocurrió un replay y mostrar el badge dorado de auditoría al operador.
+
+---
+
+### ❓ Pregunta 10: *"¿Cómo instrumentas observabilidad transaccional en un monolito modular con Micrometer y Prometheus, y qué indicadores monitoreas para detectar saturación de bloqueos pesimistas antes de que colapse el sistema?"*
+
+* **S (Situación)**: StockPilot utiliza bloqueos pesimistas `SELECT ... FOR UPDATE` para evitar la sobreventa. Bajo ráfagas masivas de compra, si múltiples hilos esperan por locks en las mismas filas de inventario, pueden retener conexiones de base de datos durante segundos, amenazando con saturar el pool HikariCP y provocar un colapso en cascada de toda la plataforma.
+* **T (Tarea)**: Implementar telemetría dimensional no invasiva que exponga los 4 Golden Signals de Google SRE (Latencia, Tráfico, Errores y Saturación) y permita diagnosticar en tiempo real cuellos de botella tanto de negocio como de infraestructura.
+* **A (Acción)**: Creé el componente `OrderMetrics.java` inyectando `MeterRegistry` de Micrometer para registrar contadores dimensionales atómicos (`stockpilot.orders.created`, `confirmed`, `cancelled`, `fulfilled`, `reservations.insufficient_stock` e `idempotency.replays`). Habilité el endpoint estándar `/actuator/prometheus` bajo formato OpenMetrics, el cual expone tanto las métricas de negocio como las métricas intrínsecas de Spring Boot: `hikaricp_connections_active`, `hikaricp_connections_total`, `hikaricp_connections_pending` y el uso del Heap de la JVM. Finalmente, en el frontend integré un visualizador en tiempo real con Recharts que calcula el ratio de saturación del pool y el porcentaje de rechazos 409.
+* **R (Resultado)**: Visibilidad operativa total a costo de cómputo despreciable (los contadores Micrometer utilizan variables atómicas en memoria RAM sin locks). El equipo de operaciones puede detectar de inmediato si `hikaricp_connections_active` se acerca al límite máximo (alerta de contención prolongada de locks pesimistas) o si la tasa de errores 409 sube anormalmente (alerta de que la demanda supera el stock físico de bodega), permitiendo escalar el pool o reabastecer inventario proactivamente antes de que ocurra una denegación de servicio.
+
+---
+
 [⬅️ Módulo 8: Hoja de Ruta de Estudio](08-hoja-de-ruta-syllabus-estudio.md) | [Índice Principal](../MASTER_STUDY_GUIDE.md) | [Siguiente Módulo: Protocolo DoD ➡️](10-protocolo-gobierno-vivo-dod.md)

@@ -54,16 +54,19 @@ flowchart LR
   * Inspeccionar el Dockerfile multi-stage y el pipeline `.github/workflows/ci.yml`.
 * **Criterio de Éxito**: Justificar con solvencia por qué StockPilot arrancó como Monolito Modular en lugar de microservicios distribuidos, y detallar cómo el Ledger Inmutable mitiga amenazas de manipulación (*Tampering*) y repudio (*Repudiation*).
 
-#### Nivel 4: Herramientas del Mercado y Transición a Sistemas Distribuidos (Semanas 7 y 8)
-* **Objetivo de Dominio**: Conocer a fondo las herramientas industriales del mercado (Redis, Kafka, Debezium, Liquibase, OpenTelemetry) y saber exactamente cuándo y cómo migrar hacia ellas.
+#### Nivel 4: Herramientas del Mercado, Frontend SPA y Observabilidad (Semanas 7 y 8)
+* **Objetivo de Dominio**: Conocer a fondo las herramientas industriales del mercado (Redis, Kafka, Debezium, Liquibase, OpenTelemetry), dominar la arquitectura de una SPA desacoplada en React 19 con seguridad CORS perimetral y telemetría de concurrencia con Prometheus y Micrometer.
 * **Temas a Dominar**:
   * Kleppmann: *Designing Data-Intensive Applications* (Cap. 7 Transacciones Distribuidas y Cap. 11 Procesamiento de Flujos).
   * El patrón Transactional Outbox y Change Data Capture (CDC).
   * Algoritmo Redlock y sus limitaciones formales (Kleppmann vs. Antirez).
+  * Frontend SPA React 19, TypeScript estricto (`verbatimModuleSyntax: true`), Same-Origin Policy (SOP), peticiones preflight CORS y exposición explícita de cabeceras transaccionales (`Idempotency-Key`, `X-Idempotent-Replay`).
+  * Observabilidad y Golden Signals de Google SRE: Contadores dimensionales en Micrometer, exposición OpenMetrics en `/actuator/prometheus`, y monitoreo en vivo de saturación de pools HikariCP y Heap de la JVM.
 * **Práctica en StockPilot**:
-  * Contrastar cada una de las 8 secciones del **Módulo 5 (Panorama Industrial)**.
+  * Contrastar cada una de las 8 secciones del **Módulo 5 (Panorama Industrial)** y dominar el **Módulo 11 (Frontend y Observabilidad)**.
+  * Inspeccionar el cliente web centralizado [`client.ts`](../../frontend/src/api/client.ts) y verificar cómo inyecta `crypto.randomUUID()` en toda petición mutativa.
   * Diseñar en papel el diagrama de migración futura: cómo se desacoplaría el módulo de `ordering` a un microservicio independiente publicando eventos de dominio en Apache Kafka mediante Debezium sin generar inconsistencias de inventario.
-* **Criterio de Éxito**: Responder las preguntas de fuego del Simulador de Entrevista (Módulo 9) con soltura, rigor técnico y postura de Solutions Architect.
+* **Criterio de Éxito**: Responder las preguntas de fuego del Simulador de Entrevista (Módulo 9) con soltura, rigor técnico y postura de Solutions Architect, explicando con fluidez el ciclo completo desde el click en el DOM de React 19 hasta el bloqueo `SELECT ... FOR UPDATE` en PostgreSQL 16 y su reflejo métrico en Prometheus.
 
 ---
 

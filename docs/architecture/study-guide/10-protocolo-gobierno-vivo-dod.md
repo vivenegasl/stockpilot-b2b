@@ -20,7 +20,7 @@ A partir de este momento, y en cumplimiento estricto con las credenciales ágile
 ### Protocolo de Modularización y Adición de Futuros Slices
 
 Gracias a la arquitectura desacoplada de la Guía de Estudio en módulos independientes dentro de `docs/architecture/study-guide/`:
-* Cada nuevo Slice (ej. **Slice 4: Pagos B2B y Facturación Electrónica**) se documenta creando un archivo atómico dedicado (ej. `11-slice-4-pagos-facturacion.md`).
+* Cada nuevo Slice se documenta creando un archivo atómico dedicado (ej. como se realizó con el **Slice 4: Frontend React 19, Observabilidad Prometheus y Métricas de Concurrencia** en [`11-slice-4-frontend-observabilidad.md`](11-slice-4-frontend-observabilidad.md), o el futuro **Slice 5: Despliegue Cloud en Oracle Cloud OCI y Contenedores** en `12-slice-5-cloud-deploy-oci-k8s.md`).
 * Se añade una fila descriptiva y el enlace en el índice maestro `MASTER_STUDY_GUIDE.md`.
 * Se actualizan las notas de resumen atómico correspondientes en la bóveda de Obsidian (`PKM`).
 * **Ventaja Arquitectónica**: Cero riesgo de conflictos de merge en Git sobre archivos gigantes, edición instantánea, lectura modular y cero pérdida de contexto por límites de tamaño.
