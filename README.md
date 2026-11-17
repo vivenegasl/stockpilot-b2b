@@ -63,38 +63,12 @@ El sistema cuenta con **10 Decisiones Arquitectónicas (ADRs)** formalmente docu
 ## 🚀 Slices de Valor Implementados (Sprints 1 a 4)
 
 ```mermaid
-flowchart LR
-    subgraph S1["Sprint 1: Fundación & Catálogo"]
-        direction TB
-        S1_1["Fundación CI/CD"]
-        S1_2["Catálogo B2B Industrial"]
-        S1_3["Docker Multi-Stage Non-Root"]
-    end
-
-    subgraph S2["Sprint 2: Inventario & Ledger"]
-        direction TB
-        S2_1["Inventario Multi-Bodega"]
-        S2_2["Columna available_qty STORED"]
-        S2_3["Ledger Inmutable @Immutable"]
-    end
-
-    subgraph S3["Sprint 3: Motor de Pedidos"]
-        direction TB
-        S3_1["Bloqueo Pesimista FOR UPDATE"]
-        S3_2["Prevención Deadlocks (Sort ASC)"]
-        S3_3["Idempotencia HTTP (Filtro 24h)"]
-        S3_4["Test de Estrés (50 Hilos)"]
-    end
-
-    subgraph S4["Sprint 4: UI & Observabilidad"]
-        direction TB
-        S4_1["Frontend SPA React 19"]
-        S4_2["Dark Luxury & Glassmorphism"]
-        S4_3["Telemetría Prometheus / Actuator"]
-        S4_4["Seguridad Perimetral CORS"]
-    end
-
-    S1 --> S2 --> S3 --> S4
+timeline
+    title Hoja de Ruta de Slices de Valor (Sprints 1 a 4)
+    Sprint 1 : Fundación CI/CD : Catálogo B2B : Docker Multi-Stage Non-Root
+    Sprint 2 : Inventario Multi-Bodega : Columna available_qty STORED : Ledger Inmutable @Immutable
+    Sprint 3 : Motor de Pedidos : Bloqueo Pesimista FOR UPDATE : Prevención Deadlocks : Idempotencia HTTP : Test 50 Hilos
+    Sprint 4 : Frontend SPA React 19 : Dark Luxury / Glassmorphism : Telemetría Prometheus : Seguridad CORS
 ```
 
 * **Slice 1 (Sprint 1)**: Catálogo Industrial con control de versión optimista (`@Version`), paginación, sanitización y CI/CD en GitHub Actions.

@@ -24,35 +24,25 @@ En este sector, clientes corporativos (empresas mineras, plantas de celulosa, in
 ## 2. Delimitación Rigurosa del Alcance
 
 ```mermaid
-flowchart TD
-    Root["StockPilot B2B Platform"]
-    
-    subgraph ScopeCore["Alcance MVP Core"]
-        C1["Catálogo B2B SKUs"]
-        C2["Inventario Multi-Bodega"]
-        C3["Reserva FOR UPDATE"]
-        C4["Idempotencia 24h"]
-        C5["Ledger Inmutable"]
-        C6["UI React 19 + Shadcn"]
-    end
-    
-    subgraph NextPhase["Siguiente Fase (Roadmap)"]
-        N1["Scheduler TTL"]
-        N2["Exportación CSV"]
-        N3["Transferencias Bodega"]
-        N4["Auth JWT + RBAC"]
-    end
-    
-    subgraph OutScope["Fuera de Alcance Explícito"]
-        O1["Microservicios"]
-        O2["Pasarelas B2C"]
-        O3["Tracking GPS"]
-        O4["Event Sourcing Complejo"]
-    end
-    
-    Root --> ScopeCore
-    Root --> NextPhase
-    Root --> OutScope
+mindmap
+  root((StockPilot))
+    Alcance MVP Core
+      Catalogo B2B SKUs
+      Inventario Multi-Bodega
+      Reserva FOR UPDATE
+      Idempotencia 24h
+      Ledger Inmutable
+      UI React 19 + Shadcn
+    Siguiente Fase
+      Scheduler TTL
+      Exportacion CSV
+      Transferencias Bodega
+      Auth JWT + RBAC
+    Fuera de Alcance
+      Microservicios
+      Pasarelas B2C
+      Tracking GPS
+      Event Sourcing
 ```
 
 ### 2.1 En Alcance (Slice 0 & MVP Core)
