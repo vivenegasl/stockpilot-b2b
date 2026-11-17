@@ -231,13 +231,55 @@ Scenario: Despacho de mercadería en bodega
 ### Sprint 4: Frontend React 19, Observabilidad y Despliegue OCI
 
 #### US-010: Dashboard de Operaciones y Catálogo Interactivo en React 19
-- **Como** Operador Logístico / Comprador,
+- **Como** Operador Logístico / Comprador B2B,
 - **Quiero** una interfaz web reactiva con componentes Shadcn y feedback en tiempo real de inventario,
 - **Para** operar la plataforma con fluidez, visualizar alertas de stock y gestionar pedidos sin fricción.
+
+##### Criterios de Aceptación (Gherkin):
+```gherkin
+Scenario: Inyección automática de Idempotency-Key en peticiones mutativas
+  Given un usuario interactuando con la Mesa de Órdenes en la SPA React 19
+  When el usuario pulsa el botón "Crear Orden de Compra"
+  Then el cliente HTTP ("client.ts") genera e inyecta un UUID v4 en la cabecera "Idempotency-Key"
+    And despacha la petición POST /api/v1/orders
+    And si el servidor responde HTTP 201 Created, la orden se visualiza de inmediato en estado "DRAFT"
+
+Scenario: Detección y notificación visual de reintento de orden (X-Idempotent-Replay)
+  Given una orden previamente confirmada con una clave de idempotencia
+  When el usuario o la red reenvía la petición de confirmación con la misma clave
+  Then el backend procesa el filtro de idempotencia y retorna HTTP 200 OK
+    And incluye la cabecera expuesta por CORS "X-Idempotent-Replay: true"
+    And la interfaz de React 19 detecta la cabecera y muestra un banner dorado de auditoría: "Respuesta recuperada de caché de idempotencia"
+
+Scenario: Visualización reactiva de niveles de inventario y bloqueo ante falta de stock
+  Given un producto en el catálogo con available_qty igual a 0
+  When el operador visualiza la ficha del producto o intenta seleccionarlo para una orden
+  Then la interfaz muestra el indicador de stock en rojo "Agotado"
+    And deshabilita la acción de agregar al pedido para prevenir errores humanos antes de llegar al backend
+```
 - **Story Points**: 5 | **Prioridad**: 🔴 Must Have | **Módulo**: `frontend`
+
+---
 
 #### US-011: Métricas de Concurrencia y Salud en Prometheus / Actuator
 - **Como** Ingeniero DevOps / SRE,
 - **Quiero** exponer métricas de locks, reservas y estados de pedidos en `/actuator/prometheus`,
 - **Para** supervisar la contención de base de datos y la salud del sistema en tiempo real.
+
+##### Criterios de Aceptación (Gherkin):
+```gherkin
+Scenario: Exposición de contadores de negocio y rechazos por sobreventa
+  Given transacciones concurrentes ejecutándose contra el motor de órdenes
+  When se ejecuta un scrape HTTP GET sobre el endpoint "/actuator/prometheus"
+  Then la respuesta retorna formato OpenMetrics con código HTTP 200 OK
+    And incluye la métrica dimensional "stockpilot_orders_created_total"
+    And incluye "stockpilot_orders_confirmed_total"
+    And incrementa "stockpilot_reservations_insufficient_stock_total" ante cada rechazo por concurrencia HTTP 409
+
+Scenario: Monitoreo de contención de base de datos en el pool HikariCP
+  Given una carga de 50 hilos concurrentes compitiendo por reservas de inventario
+  When Prometheus sondea las métricas de infraestructura del backend
+  Then se exponen las métricas "hikaricp_connections_active", "hikaricp_connections_pending" y "hikaricp_connections_timeout_total"
+    And el panel de operaciones en React 19 grafica en tiempo real el porcentaje de saturación del pool
+```
 - **Story Points**: 3 | **Prioridad**: 🟢 Could Have | **Módulo**: `shared / devops`
