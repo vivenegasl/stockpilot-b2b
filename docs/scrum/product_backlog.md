@@ -83,6 +83,13 @@ Scenario: Consulta paginada estándar
   When el cliente consulta GET /api/v1/products?page=0&size=10&sort=name,asc
   Then la API responde 200 OK con un JSON Page conteniendo 10 elementos
     And totalElements es 45 y totalPages es 5
+
+Scenario: Filtrado por categoría sin resultados o página fuera de límites
+  Given un catálogo industrial con productos clasificados
+  When el cliente solicita GET /api/v1/products?category=ROBOTICA&page=99&size=20
+  Then la API responde HTTP 200 OK
+    And el cuerpo contiene una lista vacía de items "[]"
+    And los metadatos de paginación indican "totalPages: 0", "totalElements: 0" y "empty: true"
 ```
 - **Story Points**: 2 | **Prioridad**: 🔴 Must Have | **Módulo**: `catalog`
 
@@ -102,6 +109,13 @@ Scenario: Ingreso de nuevo lote de mercadería
   When el operador ejecuta POST /api/v1/stock/adjust con cantidad 20, motivo "Importación Lote CL-2026-A"
   Then el registro stock_level se crea con total_qty=20, reserved_qty=0, available_qty=20
     And se registra una fila en inventory_ledger con movement_type="INBOUND", delta=+20 y resulting_total=20
+
+Scenario: Rechazo de ajuste con cantidad negativa o bodega inexistente
+  Given una bodega no registrada en el sistema "WH-INEXISTENTE"
+  When el operador intenta enviar un ajuste POST /api/v1/stock/adjust con cantidad negativa "-10"
+  Then el backend valida las restricciones de dominio
+    And rechaza la solicitud con HTTP 400 Bad Request y RFC 7807 ProblemDetail
+    And el ledger contable no registra ningún movimiento
 ```
 - **Story Points**: 3 | **Prioridad**: 🔴 Must Have | **Módulo**: `inventory` & `audit`
 
@@ -118,6 +132,13 @@ Scenario: Consulta de stock disponible
   Given el SKU "SEN-IFM-IND01" con 15 unidades en "WH-SCL-CENTRAL" y 0 unidades en "WH-ANF-MINER"
   When el cliente invoca GET /api/v1/products/{id}/stock
   Then la respuesta lista ambas bodegas con sus respectivos total_qty, reserved_qty y available_qty
+
+Scenario: Consulta de SKU sin inventario asignado en bodega regional
+  Given un producto existente en catálogo pero sin stock aprovisionado en "WH-ANF-MINER"
+  When el cliente consulta el stock específico para esa bodega
+  Then la API responde HTTP 200 OK
+    And retorna total_qty = 0, reserved_qty = 0 y available_qty = 0
+    And no arroja excepciones de puntero nulo ni errores 500
 ```
 - **Story Points**: 2 | **Prioridad**: 🔴 Must Have | **Módulo**: `inventory`
 
@@ -135,6 +156,13 @@ Scenario: Auditoría de movimientos de un SKU
   When el auditor solicita GET /api/v1/ledger/product/{id}?page=0&size=20
   Then la API entrega los 4 movimientos ordenados descendentemente por created_at
     And cada registro incluye timestamp, delta, saldo resultante, usuario responsable y motivo
+
+Scenario: Inmutabilidad estricta ante intento de modificación o borrado
+  Given un asiento contable previamente registrado en "inventory_ledger" con id "LEDG-001"
+  When un atacante o proceso interno intenta ejecutar un UPDATE o DELETE sobre dicho registro
+  Then la protección de persistencia "@Immutable" y las reglas de base de datos rechazan la operación
+    And se arroja una excepción de violación de inmutabilidad
+    And el historial histórico de auditoría permanece inalterado
 ```
 - **Story Points**: 3 | **Prioridad**: 🟡 Should Have | **Módulo**: `audit`
 
@@ -155,6 +183,13 @@ Scenario: Creación exitosa de orden DRAFT con Idempotency-Key
   When el cliente envía POST /api/v1/orders
   Then se crea la orden en estado "DRAFT" con un número correlativo "ORD-YYYYMMDD-XXXX"
     And no se efectúa ninguna reserva de stock en este estado
+
+Scenario: Rechazo de orden con líneas vacías o SKU no registrado
+  Given una solicitud de creación de orden con lista de líneas vacía o con SKU inexistente "SKU-FANTASMA"
+  When el cliente envía POST /api/v1/orders con cabecera Idempotency-Key
+  Then el validador de contratos rechaza la petición con HTTP 400 Bad Request
+    And retorna ProblemDetail con detalle de la violación de validación
+    And ninguna orden en estado DRAFT es persistida en la base de datos
 ```
 - **Story Points**: 5 | **Prioridad**: 🔴 Must Have | **Módulo**: `ordering`
 
@@ -203,6 +238,14 @@ Scenario: Cancelación y restitución de disponibilidad
     And las reservas vinculadas pasan a estado "RELEASED"
     And stock_level.reserved_qty disminuye en 3 (available_qty aumenta en 3)
     And se registra un movimiento "RELEASE" en el ledger
+
+Scenario: Intento ilegal de cancelar una orden ya despachada (FULFILLED)
+  Given una orden de compra que ya transitó al estado terminal "FULFILLED"
+  When el cliente o el operador intenta ejecutar PUT /api/v1/orders/{id}/cancel
+  Then la máquina de estados finita (FSM) detecta la transición ilegal
+    And rechaza la solicitud con HTTP 409 Conflict
+    And el estado de la orden permanece inalterado en "FULFILLED"
+    And el inventario total no sufre modificaciones compensatorias erróneas
 ```
 - **Story Points**: 5 | **Prioridad**: 🔴 Must Have | **Módulo**: `ordering` & `inventory`
 
@@ -223,6 +266,13 @@ Scenario: Despacho de mercadería en bodega
     And stock_level.total_qty disminuye en la cantidad despachada
     And stock_level.reserved_qty disminuye en la misma cantidad
     And se registra un movimiento "FULFILLMENT" en el ledger
+
+Scenario: Intento de despacho sobre orden en estado ilegal (DRAFT o CANCELLED)
+  Given una orden en estado "DRAFT" o "CANCELLED"
+  When el operador de bodega intenta ejecutar PUT /api/v1/orders/{id}/fulfill
+  Then el motor de estados finitos intercepta la acción no permitida
+    And responde HTTP 422 Unprocessable Entity
+    And las existencias físicas en bodega permanecen protegidas e inalteradas
 ```
 - **Story Points**: 5 | **Prioridad**: 🟡 Should Have | **Módulo**: `ordering` & `inventory`
 
