@@ -94,56 +94,53 @@ Donde las variables se corresponden de forma unívoca con las columnas del esque
 ### 4.1 C4 — Nivel 2: Diagrama de Contenedores
 
 ```mermaid
-graph TB
-    subgraph Actors ["Actores & Consumidores"]
+flowchart TD
+    subgraph Actores ["👥 Actores & Consumidores"]
         CLIENT["🏢 Comprador B2B / ERP<br/>REST API Client"]
         OPERATOR["👤 Operador Logístico<br/>Navegador Web"]
     end
 
-    subgraph Periphery ["Frontera Perimetral & Presentación"]
-        SPA["💻 Frontend SPA<br/>React 19 + TypeScript + Vite<br/>Dark Luxury Dashboard"]
-        NGINX["🛡️ Nginx 1.25 Reverse Proxy<br/>TLS 1.3 · Rate Limiting · CORS"]
+    subgraph FrontendTier ["💻 Capa de Presentación (Navegador)"]
+        SPA["Frontend SPA (React 19 + TypeScript)<br/>Vite · Dark Luxury Dashboard · Recharts"]
     end
 
-    subgraph BackendCore ["Backend Core — Spring Boot 3.4 (Java 21 LTS)"]
-        API_GATE["🚪 Web Filter Layer<br/>IdempotencyFilter · RFC 7807 Exception Handler"]
-
-        subgraph Modules ["Módulos de Dominio (Monolito Modular)"]
-            MOD_ORDERING["🛒 ordering<br/>PurchaseOrder · FSM Transaccional"]
-            MOD_CATALOG["📦 catalog<br/>SKUs · Precios B2B"]
-            MOD_INVENTORY["📊 inventory<br/>StockLevel · Locks FOR UPDATE"]
-            MOD_AUDIT["📋 audit<br/>Ledger Inmutable SOX @Immutable"]
-        end
+    subgraph IngressTier ["🛡️ Frontera Perimetral (Infraestructura)"]
+        NGINX["Nginx 1.25 Reverse Proxy<br/>TLS 1.3 · Rate Limiting · CORS"]
     end
 
-    subgraph Storage ["Almacenamiento & Observabilidad"]
-        DB[("🐘 PostgreSQL 16 Enterprise<br/>Row-Level Locks · Generated Cols<br/>HikariCP Pool")]
+    subgraph BackendTier ["⚙️ Backend Core (Spring Boot 3.4 · Java 21 LTS)"]
+        direction TB
+        API_GATE["🚪 Web Filter & Controllers<br/>IdempotencyFilter · RFC 7807"]
+        MOD_ORDERING["🛒 ordering (PurchaseOrder FSM)"]
+        MOD_CATALOG["📦 catalog (SKUs & Categorías)"]
+        MOD_INVENTORY["📊 inventory (StockLevel Locks)"]
+        MOD_AUDIT["📋 audit (Ledger Inmutable)"]
+        
+        API_GATE --> MOD_ORDERING
+        API_GATE --> MOD_CATALOG
+        MOD_ORDERING -->|"Reserva atómica"| MOD_INVENTORY
+        MOD_ORDERING -->|"Evento orden"| MOD_AUDIT
+        MOD_INVENTORY -->|"Asiento contable"| MOD_AUDIT
+    end
+
+    subgraph DataTier ["💾 Almacenamiento & Observabilidad"]
+        DB[("🐘 PostgreSQL 16 Enterprise<br/>Row-Level Locks · Generated Cols")]
         PROM["📈 Prometheus Scraper<br/>Métricas Actuator · Latencias p95/p99"]
     end
 
-    %% Flujos de Red y Control
-    OPERATOR -->|"1. Carga SPA"| SPA
-    SPA -->|"2. HTTPS / JSON"| NGINX
-    CLIENT -->|"1. B2B REST Call"| NGINX
+    %% Conexiones de flujo limpias y descendentes
+    OPERATOR -->|"Usa interfaz web"| SPA
+    SPA -->|"HTTPS / REST"| NGINX
+    CLIENT -->|"M2M HTTPS REST"| NGINX
 
     NGINX -->|"Proxy /api/v1"| API_GATE
 
-    API_GATE -->|"Ruteo de compras"| MOD_ORDERING
-    API_GATE -->|"Consulta catálogo"| MOD_CATALOG
-
-    %% Dependencias entre Módulos
-    MOD_ORDERING -->|"Reserva atómica"| MOD_INVENTORY
-    MOD_ORDERING -->|"Eventos de orden"| MOD_AUDIT
-    MOD_INVENTORY -->|"Asiento contable"| MOD_AUDIT
-
-    %% Persistencia hacia la BD
-    MOD_CATALOG -->|"HikariCP Read"| DB
-    MOD_ORDERING -->|"HikariCP Write"| DB
+    MOD_ORDERING -->|"Persistencia orden"| DB
+    MOD_CATALOG -->|"Lectura catálogo"| DB
     MOD_INVENTORY -->|"FOR UPDATE Locks"| DB
     MOD_AUDIT -->|"Append-Only INSERT"| DB
 
-    %% Observabilidad
-    API_GATE -.->|"Telemetría Micrometer"| PROM
+    API_GATE -.->|"Scrape /actuator"| PROM
 ```
 
 ### 4.2 Modelo Entidad-Relación (ERD) Físico
