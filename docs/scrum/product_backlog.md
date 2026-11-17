@@ -9,19 +9,33 @@
 ## 🗺️ Mapa de Releases y Sprints
 
 ```mermaid
-gantt
-    title Plan de Sprints y Slices de Valor
-    dateFormat  YYYY-MM-DD
-    section Sprint 1 [COMPLETADO ✅]
-    Fundación, CI/CD y Catálogo B2B :done, 2026-10-22, 2d
-    section Sprint 2 [COMPLETADO ✅]
-    Inventario Multi-Bodega y Ledger :done, 2026-10-23, 5d
-    section Sprint 3 [COMPLETADO ✅]
-    Motor de Pedidos y Bloqueo Pesimista :done, 2026-10-28, 7d
-    section Sprint 4 [COMPLETADO ✅]
-    Dashboard React 19 y Observabilidad Prometheus :done, 2026-11-04, 5d
-    section Sprint 5
-    Cloud Deploy OCI & Helm/K8s :2026-11-12, 5d
+flowchart LR
+    subgraph S1["Sprint 1 ✅ (22 Oct - 24 Oct)"]
+        direction TB
+        S1_T["Fundación, CI/CD y Catálogo B2B"]
+    end
+
+    subgraph S2["Sprint 2 ✅ (23 Oct - 28 Oct)"]
+        direction TB
+        S2_T["Inventario Multi-Bodega y Ledger"]
+    end
+
+    subgraph S3["Sprint 3 ✅ (28 Oct - 04 Nov)"]
+        direction TB
+        S3_T["Motor de Pedidos y Bloqueo Pesimista"]
+    end
+
+    subgraph S4["Sprint 4 ✅ (04 Nov - 09 Nov)"]
+        direction TB
+        S4_T["Dashboard React 19 y Observabilidad"]
+    end
+
+    subgraph S5["Sprint 5 ⏳ (12 Nov - 17 Nov)"]
+        direction TB
+        S5_T["Cloud Deploy OCI & Helm/K8s"]
+    end
+
+    S1 --> S2 --> S3 --> S4 -.-> S5
 ```
 
 ---
